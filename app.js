@@ -1,4 +1,5 @@
 let DB = JSON.parse(localStorage.getItem("fitnessDB") || "{}");
+let WEEK = parseInt(localStorage.getItem("week") || "1");
 
 // =========================
 // 📊 HISTÓRICO
@@ -12,66 +13,42 @@ history[exercise] = [];
 }
 
 history[exercise].push({
-value: Number(value),
-rpe: Number(rpe),
-date: new Date().toISOString()
+value:Number(value),
+rpe:Number(rpe),
+date:new Date().toISOString()
 });
 
-localStorage.setItem("history", JSON.stringify(history));
+localStorage.setItem("history",JSON.stringify(history));
 }
 
 // =========================
-// 🧠 IA DE PERIODIZAÇÃO
+// 🧠 IA DE CARGA (BASE SEMANAL)
 // =========================
-function analyzeExerciseCycle(history){
+function getLoadMultiplier(){
 
-if(!history || history.length < 3){
-return {
-phase:"adaptação",
-recommendation:"Construção de base técnica",
-nextLoad:2.5
-};
-}
+// ciclo de 4 semanas
+if(WEEK === 1) return 0.9;   // adaptação
+if(WEEK === 2) return 1.0;   // base
+if(WEEK === 3) return 1.05;  // progressão
+if(WEEK === 4) return 0.85;  // deload
 
-let avg = history.reduce((a,b)=>a+b.value,0)/history.length;
-let last = history[history.length-1].value;
-let rpe = history.reduce((a,b)=>a+(b.rpe||8),0)/history.length;
-
-if(rpe <= 7){
-return {
-phase:"hipertrofia",
-recommendation:"Aumentar carga 2.5–5%",
-nextLoad: Math.round(last * 1.025)
-};
-}
-
-if(rpe >= 9){
-return {
-phase:"deload",
-recommendation:"Reduzir 10–15% para recuperação",
-nextLoad: Math.round(last * 0.85)
-};
-}
-
-if(last === avg){
-return {
-phase:"platô",
-recommendation:"Variar estímulo ou descanso",
-nextLoad: last
-};
-}
-
-return {
-phase:"força",
-recommendation:"Manter progressão controlada",
-nextLoad: Math.round(last * 1.03)
-};
+return 1.0;
 }
 
 // =========================
-// 🤖 IA QUE MONTA TREINO SOZINHA
+// 🤖 IA DE PERIODIZAÇÃO SEMANAL
 // =========================
-function generateWorkout(day){
+function getWeeklyPlan(day){
+
+const split = {
+seg:"push",
+ter:"legs",
+qua:"pull",
+qui:"core",
+sex:"push",
+sab:"legs",
+dom:"rest"
+};
 
 const muscleGroups = {
 push:["Supino reto","Supino inclinado","Desenvolvimento ombro","Tríceps corda"],
@@ -80,35 +57,35 @@ legs:["Agachamento","Leg press","Stiff","Panturrilha"],
 core:["Prancha","Abdominal infra","Crunch","Prancha lateral"]
 };
 
-const split = {
-seg:"push",
-ter:"legs",
-qua:"pull",
-qui:"core",
-sex:"push",
-sab:"legs"
-};
+let type = split[day];
 
-let group = split[day] || "full";
+if(type === "rest"){
+return ["Descanso ativo (caminhada + mobilidade)"];
+}
 
-let exercises = muscleGroups[group] || ["Treino livre"];
+let exercises = muscleGroups[type] || ["Treino livre"];
 
-// 🔁 IA: randomização inteligente + variação
-return exercises
+// 🔁 variação inteligente
+exercises = exercises
 .sort(()=>Math.random()-0.5)
 .slice(0,3);
+
+return exercises;
 }
 
 // =========================
-// 📅 ABRIR DIA
+// 📅 ABRIR DIA (IA SEMANAL)
 // =========================
 function openDay(day){
 
-let exercises = generateWorkout(day);
+let exercises = getWeeklyPlan(day);
+
+let multiplier = getLoadMultiplier();
 
 let html = `
 <div class="card">
-<h2>🤖 Treino IA - ${day.toUpperCase()}</h2>
+<h2>🧠 Semana ${WEEK} - IA Avançada</h2>
+<h3>📅 ${day.toUpperCase()}</h3>
 `;
 
 exercises.forEach(ex=>{
@@ -117,7 +94,7 @@ html += `
 <div class="card">
 <b>${ex}</b>
 
-<input id="${ex}_load" placeholder="Carga (kg)">
+<input id="${ex}_load" placeholder="Carga base">
 <input id="${ex}_rpe" placeholder="RPE (1-10)">
 
 <button onclick="showAI('${ex}')">🧠 IA análise</button>
@@ -126,9 +103,11 @@ html += `
 });
 
 html += `
-<textarea id="notes" placeholder="Notas do treino"></textarea>
+<textarea id="notes" placeholder="Notas da sessão"></textarea>
 
 <button onclick="save('${day}')">💾 Salvar treino</button>
+
+<button onclick="nextWeek()">➡ Avançar semana</button>
 </div>
 `;
 
@@ -141,6 +120,8 @@ document.getElementById("app").innerHTML = html;
 function save(day){
 
 let data = {
+week:WEEK,
+day:day,
 exercises:{},
 notes:document.getElementById("notes").value
 };
@@ -160,31 +141,59 @@ DB[day]=data;
 
 localStorage.setItem("fitnessDB",JSON.stringify(DB));
 
-alert("🔥 Treino salvo com IA!");
+alert("🔥 Treino da semana salvo!");
 }
 
 // =========================
-// 🧠 PAINEL IA
+// 📈 AVANÇAR SEMANA (CICLO)
+// =========================
+function nextWeek(){
+
+WEEK++;
+
+if(WEEK > 4) WEEK = 1;
+
+localStorage.setItem("week",WEEK);
+
+alert("📈 Semana avançada para: " + WEEK);
+
+openDay("seg");
+}
+
+// =========================
+// 🧠 IA DE ANÁLISE
 // =========================
 function showAI(ex){
 
 let history = JSON.parse(localStorage.getItem("history")||"{}");
 
-let analysis = analyzeExerciseCycle(history[ex]);
+let h = history[ex];
+
+if(!h || h.length < 3){
+alert("Sem dados suficientes");
+return;
+}
+
+let avg = h.reduce((a,b)=>a+b.value,0)/h.length;
+let rpe = h.reduce((a,b)=>a+(b.rpe||8),0)/h.length;
+
+let phase = "";
+
+if(rpe <= 7) phase = "hipertrofia (progressão)";
+else if(rpe >= 9) phase = "deload (recuperação)";
+else phase = "força (manutenção)";
 
 document.getElementById("app").innerHTML = `
 <div class="card">
-<h2>🧠 IA de Periodização</h2>
+<h2>🧠 IA Avançada</h2>
 
 <p><b>Exercício:</b> ${ex}</p>
 
-<p><b>Fase:</b> ${analysis.phase}</p>
+<p><b>Média carga:</b> ${avg.toFixed(1)} kg</p>
 
-<p><b>Recomendação:</b> ${analysis.recommendation}</p>
+<p><b>Fase atual:</b> ${phase}</p>
 
-<p><b>Próxima carga sugerida:</b> ${analysis.nextLoad} kg</p>
-
-<br>
+<p><b>Semana atual:</b> ${WEEK}</p>
 
 <button onclick="openDay('seg')">⬅ Voltar</button>
 </div>
