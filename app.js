@@ -2,123 +2,90 @@ let DB = JSON.parse(localStorage.getItem("fitnessDB") || "{}");
 let WEEK = parseInt(localStorage.getItem("week") || "1");
 
 // =========================
+// 🧠 GIFS PRONTOS (SEM UPLOAD)
+// =========================
+const gifMap = {
+"Supino reto":"https://musclewiki.com/media/uploads/exercises/bench-press/male-gifs/standard.gif",
+"Supino inclinado":"https://musclewiki.com/media/uploads/exercises/incline-bench-press/male-gifs/standard.gif",
+"Agachamento":"https://musclewiki.com/media/uploads/exercises/squat/male-gifs/standard.gif",
+"Leg press":"https://musclewiki.com/media/uploads/exercises/leg-press/male-gifs/standard.gif",
+"Remada baixa":"https://musclewiki.com/media/uploads/exercises/seated-cable-row/male-gifs/standard.gif",
+"Puxada frontal":"https://musclewiki.com/media/uploads/exercises/lat-pulldown/male-gifs/standard.gif",
+"Stiff":"https://musclewiki.com/media/uploads/exercises/stiff-leg-deadlift/male-gifs/standard.gif",
+"Desenvolvimento ombro":"https://musclewiki.com/media/uploads/exercises/shoulder-press/male-gifs/standard.gif",
+"Tríceps corda":"https://musclewiki.com/media/uploads/exercises/tricep-pushdown/male-gifs/standard.gif",
+"Rosca direta":"https://musclewiki.com/media/uploads/exercises/bicep-curl/male-gifs/standard.gif"
+};
+
+// =========================
 // 📊 HISTÓRICO
 // =========================
-function saveHistory(exercise, value, rpe){
+function saveHistory(exercise,value,rpe){
 
-let history = JSON.parse(localStorage.getItem("history") || "{}");
+let history = JSON.parse(localStorage.getItem("history")||"{}");
 
 if(!history[exercise]){
-history[exercise] = [];
+history[exercise]=[];
 }
 
 history[exercise].push({
 value:Number(value),
 rpe:Number(rpe),
-date:new Date().toISOString()
+date:new Date().toISOString(),
+week:WEEK
 });
 
 localStorage.setItem("history",JSON.stringify(history));
 }
 
 // =========================
-// 🧠 IA DE ESTADO FÍSICO
+// 📅 PERIODIZAÇÃO
 // =========================
-function getBodyState(){
-
-let history = JSON.parse(localStorage.getItem("history")||"{}");
-
-let allRpe = [];
-let totalLoad = 0;
-
-Object.keys(history).forEach(ex=>{
-history[ex].forEach(h=>{
-allRpe.push(h.rpe || 8);
-totalLoad += Number(h.value || 0);
-});
-});
-
-let avgRpe = allRpe.length ? allRpe.reduce((a,b)=>a+b,0)/allRpe.length : 7;
-
-if(avgRpe <= 7){
-return "recuperado";
-}
-
-if(avgRpe <= 8){
-return "normal";
-}
-
-if(avgRpe > 8){
-return "fadiga";
-}
-
-return "normal";
+function getPhase(){
+if(WEEK===1) return "adaptação";
+if(WEEK===2) return "base";
+if(WEEK===3) return "progressão";
+if(WEEK===4) return "deload";
+return "base";
 }
 
 // =========================
-// 🏋️ + 🏃 IA TREINO + CARDIO
+// 🏃 CARDIO FIXO
 // =========================
-function getWorkout(day){
+function getCardio(day){
 
-const split = {
-seg:"push",
-ter:"legs",
-qua:"pull",
-qui:"core",
-sex:"push",
-sab:"legs",
-dom:"rest"
+const map = {
+seg:"Fitdance",
+ter:"Funcional",
+qua:"Fitdance",
+qui:"Funcional",
+sex:"Fitdance",
+sab:"Fitdance",
+dom:"Descanso"
 };
 
-const muscleGroups = {
-push:["Supino reto","Supino inclinado","Ombro","Tríceps corda","Elevação lateral","Paralelas"],
-pull:["Puxada frontal","Remada baixa","Rosca direta","Face pull","Barra fixa","Remada unilateral"],
-legs:["Agachamento","Leg press","Stiff","Panturrilha","Avanço","Extensora"],
-core:["Prancha","Abdominal infra","Crunch","Prancha lateral","Elevação de pernas"]
-};
-
-const cardioOptions = {
-recuperado:["Fitdance","Funcional leve","Caminhada"],
-normal:["Corrida leve","Funcional","Bike"],
-fadiga:["Caminhada leve","Mobilidade","Descanso ativo"]
-};
-
-let type = split[day];
-let state = getBodyState();
-
-// =========================
-// 🧠 TREINO AJUSTADO
-// =========================
-let exercises = [];
-
-if(type === "rest"){
-exercises = ["Mobilidade","Alongamento"];
-} else {
-exercises = muscleGroups[type]
-.sort(()=>Math.random()-0.5)
-.slice(0,6);
+return map[day];
 }
 
 // =========================
-// 🏃 CARDIO AJUSTADO
+// 🏋️ TREINO (6 EXERCÍCIOS)
 // =========================
-let cardioType = cardioOptions[state][Math.floor(Math.random()*cardioOptions[state].length)];
+function getExercises(){
 
-let cardioTime = 0;
+const list = [
+"Supino reto",
+"Supino inclinado",
+"Agachamento",
+"Leg press",
+"Remada baixa",
+"Puxada frontal",
+"Stiff",
+"Desenvolvimento ombro",
+"Tríceps corda",
+"Rosca direta"
+];
 
-if(state === "recuperado") cardioTime = 30;
-if(state === "normal") cardioTime = 20;
-if(state === "fadiga") cardioTime = 10;
-
-return {
-title:type.toUpperCase(),
-exercises:exercises,
-cardio:{
-type:cardioType,
-time:cardioTime,
-state:state
-}
-};
+return list.sort(()=>Math.random()-0.5).slice(0,6);
 }
 
 // =========================
@@ -126,32 +93,41 @@ state:state
 // =========================
 function openDay(day){
 
-let workout = getWorkout(day);
+let phase = getPhase();
+let cardio = getCardio(day);
+let exercises = getExercises();
 
 let html = `
 <div class="card">
 
-<h2>🏋️ ${workout.title}</h2>
+<h2>🏋️ TREINO ${day.toUpperCase()}</h2>
 
-<p>🧠 Estado físico: <b>${workout.cardio.state}</b></p>
+<p>📌 Fase: <b>${phase}</b></p>
 
 <div class="card">
-<b>🏃 Cardio automático</b>
-<p><b>${workout.cardio.type}</b> - ${workout.cardio.time} min</p>
-
-<input id="cardio_type" placeholder="Editar cardio">
-<input id="cardio_time" placeholder="Tempo (min)">
+<h3>💃 Cardio: ${cardio}</h3>
 </div>
 `;
 
-workout.exercises.forEach(ex=>{
+// =========================
+// 🏋️ EXERCÍCIOS
+// =========================
+html += `<h3>🏋️ Musculação (6 exercícios)</h3>`;
+
+exercises.forEach(ex=>{
+
+let gif = gifMap[ex] || "";
 
 html += `
 <div class="card">
-<b>${ex}</b>
+
+<h4>${ex}</h4>
+
+<img src="${gif}" width="100%" style="border-radius:10px" />
 
 <input id="${ex}_load" placeholder="Carga kg">
 <input id="${ex}_rpe" placeholder="RPE (1-10)">
+
 </div>
 `;
 });
@@ -176,11 +152,7 @@ function save(day){
 
 let data = {
 week:WEEK,
-day:day,
-cardio:{
-type:document.getElementById("cardio_type").value,
-time:document.getElementById("cardio_time").value
-},
+cardio:getCardio(day),
 exercises:{},
 notes:document.getElementById("notes").value
 };
@@ -190,7 +162,7 @@ document.querySelectorAll("input").forEach(i=>{
 data.exercises[i.id]=i.value;
 
 if(i.id.includes("_load")){
-let rpe = document.getElementById(i.id.replace("_load","_rpe")).value;
+let rpe=document.getElementById(i.id.replace("_load","_rpe")).value;
 saveHistory(i.id,i.value,rpe);
 }
 
@@ -200,7 +172,7 @@ DB[day]=data;
 
 localStorage.setItem("fitnessDB",JSON.stringify(DB));
 
-alert("🔥 IA ajustou treino + cardio!");
+alert("🔥 Treino salvo!");
 }
 
 // =========================
@@ -210,11 +182,9 @@ function nextWeek(){
 
 WEEK++;
 
-if(WEEK > 4) WEEK = 1;
+if(WEEK>4) WEEK=1;
 
 localStorage.setItem("week",WEEK);
-
-alert("Semana atualizada: " + WEEK);
 
 openDay("seg");
 }
