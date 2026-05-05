@@ -1,197 +1,69 @@
-let DB = JSON.parse(localStorage.getItem("fitnessDB") || "{}");
-let WEEK = parseInt(localStorage.getItem("week") || "1");
+let DB = JSON.parse(localStorage.getItem("db") || "{}");
 
-// =========================
-// 🎥 VÍDEOS (substitui GIFs)
-// =========================
-const videoMap = {
-  "Supino reto": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
-  "Supino inclinado": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-  "Agachamento": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-  "Leg press": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
-  "Remada baixa": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
-  "Puxada frontal": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-  "Stiff": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/WeAreGoingOnBullrun.mp4",
-  "Desenvolvimento ombro": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-  "Tríceps corda": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
-  "Rosca direta": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4"
+// -------------------------
+// 🎥 vídeos simples (demo)
+// -------------------------
+const videos = {
+  "Supino reto": "https://www.w3schools.com/html/mov_bbb.mp4",
+  "Agachamento": "https://www.w3schools.com/html/movie.mp4",
+  "Remada": "https://www.w3schools.com/html/mov_bbb.mp4",
+  "Leg press": "https://www.w3schools.com/html/movie.mp4",
+  "Ombro": "https://www.w3schools.com/html/mov_bbb.mp4"
 };
 
-// =========================
-// 📊 HISTÓRICO
-// =========================
-function saveHistory(exercise, value, rpe, setsDone) {
-  let history = JSON.parse(localStorage.getItem("history") || "{}");
-
-  if (!history[exercise]) {
-    history[exercise] = [];
-  }
-
-  history[exercise].push({
-    value: Number(value),
-    rpe: Number(rpe),
-    setsDone: Number(setsDone),
-    date: new Date().toISOString(),
-    week: WEEK
-  });
-
-  localStorage.setItem("history", JSON.stringify(history));
-}
-
-// =========================
-// 📅 FASE
-// =========================
-function getPhase() {
-  if (WEEK === 1) return "adaptação";
-  if (WEEK === 2) return "base";
-  if (WEEK === 3) return "progressão";
-  if (WEEK === 4) return "deload";
-  return "base";
-}
-
-// =========================
-// 🏃 CARDIO
-// =========================
-function getCardio(day) {
-  const map = {
-    seg: "Fitdance",
-    ter: "Funcional",
-    qua: "Fitdance",
-    qui: "Funcional",
-    sex: "Fitdance",
-    sab: "Fitdance",
-    dom: "Descanso"
-  };
-
-  return map[day];
-}
-
-// =========================
-// 🏋️ EXERCÍCIOS
-// =========================
+// -------------------------
+// 🏋️ lista de exercícios
+// -------------------------
 function getExercises() {
-  const list = [
-    "Supino reto",
-    "Supino inclinado",
-    "Agachamento",
-    "Leg press",
-    "Remada baixa",
-    "Puxada frontal",
-    "Stiff",
-    "Desenvolvimento ombro",
-    "Tríceps corda",
-    "Rosca direta"
-  ];
-
-  return list.sort(() => Math.random() - 0.5).slice(0, 6);
+  return Object.keys(videos);
 }
 
-// =========================
-// 📅 ABRIR DIA
-// =========================
-function openDay(day) {
-  let phase = getPhase();
-  let cardio = getCardio(day);
-  let exercises = getExercises();
+// -------------------------
+// 📱 render
+// -------------------------
+function render() {
+  const app = document.getElementById("app");
 
-  let html = `
-  <div class="card">
-    <h2>🏋️ TREINO ${day.toUpperCase()}</h2>
-    <p>📌 Fase: <b>${phase}</b></p>
+  let html = `<h1>🏋️ Fitness App</h1>`;
 
-    <div class="card">
-      <h3>💃 Cardio: ${cardio}</h3>
-    </div>
-
-    <h3>🏋️ Musculação (6 exercícios)</h3>
-  `;
-
-  exercises.forEach(ex => {
-    let video = videoMap[ex] || "";
-
+  getExercises().forEach(ex => {
     html += `
-    <div class="card">
-      <h4>${ex}</h4>
+      <div class="card">
+        <h3>${ex}</h3>
 
-      <video 
-        width="100%" 
-        style="border-radius:10px"
-        autoplay 
-        loop 
-        muted 
-        playsinline
-      >
-        <source src="${video}" type="video/mp4">
-      </video>
+        <video autoplay loop muted playsinline>
+          <source src="${videos[ex]}" type="video/mp4">
+        </video>
 
-      <label>💪 Carga (kg)</label>
-      <input id="${ex}_load">
+        <label>Carga (kg)</label>
+        <input id="${ex}_load" value="${DB[ex]?.load || ""}">
 
-      <label>🎯 RPE</label>
-      <input id="${ex}_rpe">
+        <label>RPE</label>
+        <input id="${ex}_rpe" value="${DB[ex]?.rpe || ""}">
 
-      <label>🔁 Séries planejadas</label>
-      <input id="${ex}_sets_plan">
-
-      <label>✅ Séries realizadas</label>
-      <input id="${ex}_sets_done">
-    </div>
+        <button onclick="save('${ex}')">Salvar</button>
+      </div>
     `;
   });
 
-  html += `
-    <textarea id="notes" placeholder="Notas do treino"></textarea>
-
-    <button onclick="save('${day}')">💾 Salvar treino</button>
-    <button onclick="nextWeek()">➡ Próxima semana</button>
-  </div>
-  `;
-
-  document.getElementById("app").innerHTML = html;
+  app.innerHTML = html;
 }
 
-// =========================
-// 💾 SALVAR
-// =========================
-function save(day) {
-  let data = {
-    week: WEEK,
-    cardio: getCardio(day),
-    exercises: {},
-    notes: document.getElementById("notes").value
-  };
+// -------------------------
+// 💾 salvar
+// -------------------------
+function save(ex) {
+  const load = document.getElementById(ex + "_load").value;
+  const rpe = document.getElementById(ex + "_rpe").value;
 
-  document.querySelectorAll("input").forEach(i => {
-    data.exercises[i.id] = i.value;
+  DB[ex] = { load, rpe };
 
-    if (i.id.includes("_load")) {
-      let base = i.id.replace("_load", "");
-      let rpe = document.getElementById(base + "_rpe").value;
-      let setsDone = document.getElementById(base + "_sets_done").value;
+  localStorage.setItem("db", JSON.stringify(DB));
 
-      saveHistory(base, i.value, rpe, setsDone);
-    }
-  });
-
-  DB[day] = data;
-
-  localStorage.setItem("fitnessDB", JSON.stringify(DB));
-
-  alert("🔥 Treino completo salvo!");
+  alert("Salvo!");
 }
 
-// =========================
-// 📈 SEMANA
-// =========================
-function nextWeek() {
-  WEEK++;
-  if (WEEK > 4) WEEK = 1;
-
-  localStorage.setItem("week", WEEK);
-  openDay("seg");
-}
-
-// =========================
-// 🚀 INICIAL
-// =========================
-openDay("seg");
+// -------------------------
+// start
+// -------------------------
+render();
