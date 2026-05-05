@@ -1,6 +1,8 @@
 let DB = JSON.parse(localStorage.getItem("fitnessDB") || "{}");
 
-// 📊 histórico
+// =========================
+// 📊 HISTÓRICO
+// =========================
 function saveHistory(exercise, value, rpe){
 
 let history = JSON.parse(localStorage.getItem("history") || "{}");
@@ -18,14 +20,16 @@ date: new Date().toISOString()
 localStorage.setItem("history", JSON.stringify(history));
 }
 
+// =========================
 // 🧠 IA DE PERIODIZAÇÃO
+// =========================
 function analyzeExerciseCycle(history){
 
 if(!history || history.length < 3){
 return {
 phase:"adaptação",
 recommendation:"Construção de base técnica",
-nextLoad: "+2.5kg progressivo"
+nextLoad:2.5
 };
 }
 
@@ -52,55 +56,88 @@ nextLoad: Math.round(last * 0.85)
 if(last === avg){
 return {
 phase:"platô",
-recommendation:"Variar estímulo ou descanso maior",
+recommendation:"Variar estímulo ou descanso",
 nextLoad: last
 };
 }
 
 return {
 phase:"força",
-recommendation:"Manter e subir levemente carga",
+recommendation:"Manter progressão controlada",
 nextLoad: Math.round(last * 1.03)
 };
 }
 
-// 📅 abrir dia
-function openDay(day){
+// =========================
+// 🤖 IA QUE MONTA TREINO SOZINHA
+// =========================
+function generateWorkout(day){
 
-const base = {
-seg:["Cardio"],
-ter:["Agachamento","Burpee"],
-qua:["Puxada","Remada"],
-qui:["HIIT"],
-sex:["Supino","Tríceps"],
-sab:["Agachamento","Rosca"]
+const muscleGroups = {
+push:["Supino reto","Supino inclinado","Desenvolvimento ombro","Tríceps corda"],
+pull:["Puxada frontal","Remada baixa","Rosca direta","Face pull"],
+legs:["Agachamento","Leg press","Stiff","Panturrilha"],
+core:["Prancha","Abdominal infra","Crunch","Prancha lateral"]
 };
 
-let html = `<div class="card"><h2>${day.toUpperCase()}</h2>`;
+const split = {
+seg:"push",
+ter:"legs",
+qua:"pull",
+qui:"core",
+sex:"push",
+sab:"legs"
+};
 
-base[day].forEach(ex=>{
+let group = split[day] || "full";
+
+let exercises = muscleGroups[group] || ["Treino livre"];
+
+// 🔁 IA: randomização inteligente + variação
+return exercises
+.sort(()=>Math.random()-0.5)
+.slice(0,3);
+}
+
+// =========================
+// 📅 ABRIR DIA
+// =========================
+function openDay(day){
+
+let exercises = generateWorkout(day);
+
+let html = `
+<div class="card">
+<h2>🤖 Treino IA - ${day.toUpperCase()}</h2>
+`;
+
+exercises.forEach(ex=>{
 
 html += `
 <div class="card">
 <b>${ex}</b>
 
-<input id="${ex}_load" placeholder="Carga kg">
+<input id="${ex}_load" placeholder="Carga (kg)">
 <input id="${ex}_rpe" placeholder="RPE (1-10)">
 
-<button onclick="showAI('${ex}')">🧠 IA</button>
+<button onclick="showAI('${ex}')">🧠 IA análise</button>
 </div>
 `;
 });
 
-html += `<textarea id="notes" placeholder="Notas"></textarea>
-<button onclick="save('${day}')">Salvar treino</button></div>`;
+html += `
+<textarea id="notes" placeholder="Notas do treino"></textarea>
+
+<button onclick="save('${day}')">💾 Salvar treino</button>
+</div>
+`;
 
 document.getElementById("app").innerHTML = html;
-
-load(day);
 }
 
-// 💾 salvar
+// =========================
+// 💾 SALVAR TREINO
+// =========================
 function save(day){
 
 let data = {
@@ -123,10 +160,12 @@ DB[day]=data;
 
 localStorage.setItem("fitnessDB",JSON.stringify(DB));
 
-alert("Salvo!");
+alert("🔥 Treino salvo com IA!");
 }
 
-// 📊 IA painel
+// =========================
+// 🧠 PAINEL IA
+// =========================
 function showAI(ex){
 
 let history = JSON.parse(localStorage.getItem("history")||"{}");
@@ -143,12 +182,16 @@ document.getElementById("app").innerHTML = `
 
 <p><b>Recomendação:</b> ${analysis.recommendation}</p>
 
-<p><b>Próxima carga:</b> ${analysis.nextLoad}</p>
+<p><b>Próxima carga sugerida:</b> ${analysis.nextLoad} kg</p>
 
-<button onclick="openDay('seg')">Voltar</button>
+<br>
+
+<button onclick="openDay('seg')">⬅ Voltar</button>
 </div>
 `;
 }
 
-// carregar inicial
+// =========================
+// 🚀 INICIAL
+// =========================
 openDay("seg");
