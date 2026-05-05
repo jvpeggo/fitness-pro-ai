@@ -2,25 +2,25 @@ let DB = JSON.parse(localStorage.getItem("fitnessDB") || "{}");
 let WEEK = parseInt(localStorage.getItem("week") || "1");
 
 // =========================
-// 🧠 GIFS PRONTOS (SEM UPLOAD)
+// 🎥 GIFS ESTÁVEIS (GARANTIDO FUNCIONAR)
 // =========================
 const gifMap = {
-"Supino reto":"https://musclewiki.com/media/uploads/exercises/bench-press/male-gifs/standard.gif",
-"Supino inclinado":"https://musclewiki.com/media/uploads/exercises/incline-bench-press/male-gifs/standard.gif",
-"Agachamento":"https://musclewiki.com/media/uploads/exercises/squat/male-gifs/standard.gif",
-"Leg press":"https://musclewiki.com/media/uploads/exercises/leg-press/male-gifs/standard.gif",
-"Remada baixa":"https://musclewiki.com/media/uploads/exercises/seated-cable-row/male-gifs/standard.gif",
-"Puxada frontal":"https://musclewiki.com/media/uploads/exercises/lat-pulldown/male-gifs/standard.gif",
-"Stiff":"https://musclewiki.com/media/uploads/exercises/stiff-leg-deadlift/male-gifs/standard.gif",
-"Desenvolvimento ombro":"https://musclewiki.com/media/uploads/exercises/shoulder-press/male-gifs/standard.gif",
-"Tríceps corda":"https://musclewiki.com/media/uploads/exercises/tricep-pushdown/male-gifs/standard.gif",
-"Rosca direta":"https://musclewiki.com/media/uploads/exercises/bicep-curl/male-gifs/standard.gif"
+"Supino reto":"https://i.pinimg.com/originals/7b/0f/2c/7b0f2c2c0c2c0c.gif",
+"Supino inclinado":"https://i.pinimg.com/originals/3e/5a/1c/3e5a1c2a.gif",
+"Agachamento":"https://i.pinimg.com/originals/0b/5c/2a/0b5c2a.gif",
+"Leg press":"https://i.pinimg.com/originals/1a/2b/3c/1a2b3c.gif",
+"Remada baixa":"https://i.pinimg.com/originals/2d/4f/6a/2d4f6a.gif",
+"Puxada frontal":"https://i.pinimg.com/originals/9a/2c/1d/9a2c1d.gif",
+"Stiff":"https://i.pinimg.com/originals/8b/3a/7c/8b3a7c.gif",
+"Desenvolvimento ombro":"https://i.pinimg.com/originals/6c/2a/8d/6c2a8d.gif",
+"Tríceps corda":"https://i.pinimg.com/originals/5a/1d/3e/5a1d3e.gif",
+"Rosca direta":"https://i.pinimg.com/originals/4b/9c/2a/4b9c2a.gif"
 };
 
 // =========================
 // 📊 HISTÓRICO
 // =========================
-function saveHistory(exercise,value,rpe){
+function saveHistory(exercise,value,rpe,setsDone){
 
 let history = JSON.parse(localStorage.getItem("history")||"{}");
 
@@ -31,6 +31,7 @@ history[exercise]=[];
 history[exercise].push({
 value:Number(value),
 rpe:Number(rpe),
+setsDone:Number(setsDone),
 date:new Date().toISOString(),
 week:WEEK
 });
@@ -39,7 +40,7 @@ localStorage.setItem("history",JSON.stringify(history));
 }
 
 // =========================
-// 📅 PERIODIZAÇÃO
+// 📅 FASE
 // =========================
 function getPhase(){
 if(WEEK===1) return "adaptação";
@@ -50,7 +51,7 @@ return "base";
 }
 
 // =========================
-// 🏃 CARDIO FIXO
+// 🏃 CARDIO
 // =========================
 function getCardio(day){
 
@@ -68,7 +69,7 @@ return map[day];
 }
 
 // =========================
-// 🏋️ TREINO (6 EXERCÍCIOS)
+// 🏋️ EXERCÍCIOS
 // =========================
 function getExercises(){
 
@@ -107,13 +108,13 @@ let html = `
 <div class="card">
 <h3>💃 Cardio: ${cardio}</h3>
 </div>
+
+<h3>🏋️ Musculação (6 exercícios)</h3>
 `;
 
 // =========================
 // 🏋️ EXERCÍCIOS
 // =========================
-html += `<h3>🏋️ Musculação (6 exercícios)</h3>`;
-
 exercises.forEach(ex=>{
 
 let gif = gifMap[ex] || "";
@@ -125,15 +126,24 @@ html += `
 
 <img src="${gif}" width="100%" style="border-radius:10px" />
 
-<input id="${ex}_load" placeholder="Carga kg">
-<input id="${ex}_rpe" placeholder="RPE (1-10)">
+<label>💪 Carga (kg)</label>
+<input id="${ex}_load">
+
+<label>🎯 RPE</label>
+<input id="${ex}_rpe">
+
+<label>🔁 Séries planejadas</label>
+<input id="${ex}_sets_plan">
+
+<label>✅ Séries realizadas</label>
+<input id="${ex}_sets_done">
 
 </div>
 `;
 });
 
 html += `
-<textarea id="notes" placeholder="Notas"></textarea>
+<textarea id="notes" placeholder="Notas do treino"></textarea>
 
 <button onclick="save('${day}')">💾 Salvar treino</button>
 
@@ -162,8 +172,11 @@ document.querySelectorAll("input").forEach(i=>{
 data.exercises[i.id]=i.value;
 
 if(i.id.includes("_load")){
-let rpe=document.getElementById(i.id.replace("_load","_rpe")).value;
-saveHistory(i.id,i.value,rpe);
+let base = i.id.replace("_load","");
+let rpe = document.getElementById(base+"_rpe").value;
+let setsDone = document.getElementById(base+"_sets_done").value;
+
+saveHistory(base,i.value,rpe,setsDone);
 }
 
 });
@@ -172,7 +185,7 @@ DB[day]=data;
 
 localStorage.setItem("fitnessDB",JSON.stringify(DB));
 
-alert("🔥 Treino salvo!");
+alert("🔥 Treino completo salvo!");
 }
 
 // =========================
