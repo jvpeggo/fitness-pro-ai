@@ -1,44 +1,20 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>Fitness Pro AI</title>
-
-<link rel="stylesheet" href="style.css">
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#ff2a2a">
-
-<!-- 📊 gráficos -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta charset="UTF-8">
+  <title>Fitness App</title>
+  <style>
+    body { font-family: Arial; background:#111; color:#fff; padding:20px; }
+    .card { background:#222; padding:15px; margin-bottom:15px; border-radius:10px; }
+    input, textarea { width:100%; margin:5px 0 10px; padding:8px; border-radius:5px; border:none; }
+    button { padding:10px; margin-top:10px; border:none; border-radius:5px; cursor:pointer; }
+  </style>
 </head>
-
 <body>
 
-<div class="header">
-<h2>🔥 FITNESS PRO AI</h2>
-<small>Periodização automática nível atleta</small>
-</div>
+<div id="app"></div>
 
-<div class="tabs">
-<button onclick="openDay('seg')">Seg</button>
-<button onclick="openDay('ter')">Ter</button>
-<button onclick="openDay('qua')">Qua</button>
-<button onclick="openDay('qui')">Qui</button>
-<button onclick="openDay('sex')">Sex</button>
-<button onclick="openDay('sab')">Sáb</button>
-</div>
-
-<div id="app" class="container"></div>
-
-<script src="app.js"></script>
-
-<script>
-if('serviceWorker' in navigator){
-navigator.serviceWorker.register('service-worker.js');
-}
-</script>
+<script src="script.js"></script>
 
 </body>
 </html>
