@@ -2,7 +2,7 @@ let DB = JSON.parse(localStorage.getItem("fitnessDB") || "{}");
 let WEEK = parseInt(localStorage.getItem("week") || "1");
 
 // =========================
-// 📊 HISTÓRICO GLOBAL
+// 📊 HISTÓRICO
 // =========================
 function saveHistory(exercise, value, rpe){
 
@@ -15,52 +15,48 @@ history[exercise] = [];
 history[exercise].push({
 value:Number(value),
 rpe:Number(rpe),
-date:new Date().toISOString(),
-week:WEEK
+date:new Date().toISOString()
 });
 
 localStorage.setItem("history",JSON.stringify(history));
 }
 
 // =========================
-// 🧠 MACROCICLO (4 SEMANAS)
-// =========================
-function getMacroPhase(){
-
-if(WEEK === 1) return "adaptação";
-if(WEEK === 2) return "base";
-if(WEEK === 3) return "progressão";
-if(WEEK === 4) return "deload";
-
-return "base";
-}
-
-// =========================
-// 🧠 ESTADO FÍSICO
+// 🧠 IA DE ESTADO FÍSICO
 // =========================
 function getBodyState(){
 
 let history = JSON.parse(localStorage.getItem("history")||"{}");
 
-let rpes = [];
+let allRpe = [];
+let totalLoad = 0;
 
 Object.keys(history).forEach(ex=>{
 history[ex].forEach(h=>{
-if(h.rpe) rpes.push(h.rpe);
+allRpe.push(h.rpe || 8);
+totalLoad += Number(h.value || 0);
 });
 });
 
-if(rpes.length === 0) return "normal";
+let avgRpe = allRpe.length ? allRpe.reduce((a,b)=>a+b,0)/allRpe.length : 7;
 
-let avg = rpes.reduce((a,b)=>a+b,0)/rpes.length;
+if(avgRpe <= 7){
+return "recuperado";
+}
 
-if(avg <= 7) return "recuperado";
-if(avg <= 8) return "normal";
+if(avgRpe <= 8){
+return "normal";
+}
+
+if(avgRpe > 8){
 return "fadiga";
 }
 
+return "normal";
+}
+
 // =========================
-// 🏋️ GERADOR PROFISSIONAL
+// 🏋️ + 🏃 IA TREINO + CARDIO
 // =========================
 function getWorkout(day){
 
@@ -74,66 +70,54 @@ sab:"legs",
 dom:"rest"
 };
 
-const base = {
-push:["Supino reto","Supino inclinado","Desenvolvimento ombro","Tríceps corda","Elevação lateral","Paralelas"],
+const muscleGroups = {
+push:["Supino reto","Supino inclinado","Ombro","Tríceps corda","Elevação lateral","Paralelas"],
 pull:["Puxada frontal","Remada baixa","Rosca direta","Face pull","Barra fixa","Remada unilateral"],
 legs:["Agachamento","Leg press","Stiff","Panturrilha","Avanço","Extensora"],
 core:["Prancha","Abdominal infra","Crunch","Prancha lateral","Elevação de pernas"]
 };
 
+const cardioOptions = {
+recuperado:["Fitdance","Funcional leve","Caminhada"],
+normal:["Corrida leve","Funcional","Bike"],
+fadiga:["Caminhada leve","Mobilidade","Descanso ativo"]
+};
+
 let type = split[day];
-let phase = getMacroPhase();
 let state = getBodyState();
 
 // =========================
-// 🧠 AJUSTE DE VOLUME POR FASE
-// =========================
-let volume = 6;
-
-if(phase === "adaptação") volume = 4;
-if(phase === "base") volume = 5;
-if(phase === "progressão") volume = 6;
-if(phase === "deload") volume = 3;
-
-// =========================
-// 🏋️ TREINO
+// 🧠 TREINO AJUSTADO
 // =========================
 let exercises = [];
 
 if(type === "rest"){
-exercises = ["Mobilidade","Caminhada leve"];
+exercises = ["Mobilidade","Alongamento"];
 } else {
-exercises = base[type]
+exercises = muscleGroups[type]
 .sort(()=>Math.random()-0.5)
-.slice(0,volume);
+.slice(0,6);
 }
 
 // =========================
-// 🏃 CARDIO INTELIGENTE
+// 🏃 CARDIO AJUSTADO
 // =========================
-let cardio = "";
+let cardioType = cardioOptions[state][Math.floor(Math.random()*cardioOptions[state].length)];
 
-if(state === "fadiga"){
-cardio = {type:"Caminhada leve",time:10};
-}
+let cardioTime = 0;
 
-if(state === "normal"){
-cardio = {type:"Funcional ou corrida leve",time:20};
-}
+if(state === "recuperado") cardioTime = 30;
+if(state === "normal") cardioTime = 20;
+if(state === "fadiga") cardioTime = 10;
 
-if(state === "recuperado"){
-cardio = {type:"Fitdance ou HIIT",time:30};
-}
-
-// =========================
-// RETURN FINAL
-// =========================
 return {
 title:type.toUpperCase(),
-phase:phase,
-state:state,
 exercises:exercises,
-cardio:cardio
+cardio:{
+type:cardioType,
+time:cardioTime,
+state:state
+}
 };
 }
 
@@ -149,15 +133,14 @@ let html = `
 
 <h2>🏋️ ${workout.title}</h2>
 
-<p>📅 Fase: <b>${workout.phase}</b></p>
-<p>🧠 Estado: <b>${workout.state}</b></p>
+<p>🧠 Estado físico: <b>${workout.cardio.state}</b></p>
 
 <div class="card">
 <b>🏃 Cardio automático</b>
-<p>${workout.cardio.type} - ${workout.cardio.time} min</p>
+<p><b>${workout.cardio.type}</b> - ${workout.cardio.time} min</p>
 
 <input id="cardio_type" placeholder="Editar cardio">
-<input id="cardio_time" placeholder="Tempo">
+<input id="cardio_time" placeholder="Tempo (min)">
 </div>
 `;
 
@@ -178,7 +161,7 @@ html += `
 
 <button onclick="save('${day}')">💾 Salvar treino</button>
 
-<button onclick="nextWeek()">➡ Avançar semana</button>
+<button onclick="nextWeek()">➡ Próxima semana</button>
 
 </div>
 `;
@@ -193,12 +176,12 @@ function save(day){
 
 let data = {
 week:WEEK,
-phase:getMacroPhase(),
-exercises:{},
+day:day,
 cardio:{
 type:document.getElementById("cardio_type").value,
 time:document.getElementById("cardio_time").value
 },
+exercises:{},
 notes:document.getElementById("notes").value
 };
 
@@ -217,7 +200,7 @@ DB[day]=data;
 
 localStorage.setItem("fitnessDB",JSON.stringify(DB));
 
-alert("🔥 Periodização salva!");
+alert("🔥 IA ajustou treino + cardio!");
 }
 
 // =========================
@@ -231,7 +214,7 @@ if(WEEK > 4) WEEK = 1;
 
 localStorage.setItem("week",WEEK);
 
-alert("📅 Semana: " + WEEK);
+alert("Semana atualizada: " + WEEK);
 
 openDay("seg");
 }
